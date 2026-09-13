@@ -1,0 +1,55 @@
+---
+title: "DSC 335 Quiz 9"
+format: pdf
+editor: visual
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(bayesrules)
+library(gridExtra)
+library(rstan)
+library(rstanarm)
+library(bayesplot)
+library(janitor)
+library(e1071)
+library(broom.mixed)
+library(tidybayes) 
+```
+
+**Name: Gabriel Eze**
+
+The following code filters the *penguin_bayes* data set so that the *species* variable is binary. We will use this filtered data set *penguin_data* for the problems below.
+
+```{r}
+penguin_data <- penguins_bayes %>% 
+  filter(species %in% c("Adelie", "Gentoo")) %>%
+  na.omit()
+```
+
+1.  We are interested in a model that uses the penguin's *species* to predict their body mass, in grams (*body_mass_g*). The only prior information that we want to use (other than default weakly informative priors) is that the typical body mass for Gentoo penguins is 1200 g more than Adelie penguins, but that this difference may be somewhere between 800 and 1600. Fit this model in the code chunk below using the *stan_glm* function.
+
+```{r, results='hide', cache=TRUE}
+mod <- stan_glm(body_mass_g ~ species, data = penguin_data, prior_intercept = normal(1200, 200), chains = 4, iter = 10000, seed = 0)
+```
+
+2.  Calculate and interpret a 90\\% posterior credible interval for the intercept coefficient in the model.
+
+    ANS: There's a 90% posterior plausibility that the typical body mass in grams of the penguins is between 3571.8 and 3704.0 g.
+
+```{r}
+tidy(mod, effects = 'fixed', conf.int = T, conf.level = .9)
+```
+
+3.  Perform a 10-fold cross-validation procedure of the model's posterior predictive quality. Produce the standard table of posterior predictive summaries from the cross-validation procedure.
+
+```{r, cache=TRUE}
+cv <- prediction_summary_cv(model = mod, data = penguin_data, k = 10)
+cv$folds
+cv$cv
+
+```
+
+4.  Give an interpretation of the *mae* value from the table above, in context. (If you were unable to produce a table, make up a value and interpret that value as the *mae*.)
+
+ANS: The average mean absolute error from the cross validation of 10 folds is 350.9 g with a fairly small standard error.

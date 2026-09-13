@@ -1,0 +1,51 @@
+---
+title: "DSC 335 Quiz 8"
+format: pdf
+editor: visual
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(rstan)
+library(bayesplot)
+library(bayesrules)
+library(tidybayes)
+library(rstanarm)
+```
+
+**Name: Gabriel Eze**
+
+The **penguins_bayes** dataset in the **bayesrules** package includes data on 344 penguins. In this quiz, you will use this data to model the length of penguin flippers in mm (Y:**flipper_length_lm**) by their body mass in g (X:**body_mass_g**).
+
+1.  Based on their study of penguins in other regions, suppose that researchers are quite certain about the relationship between flipper length and body mass, prior to seeing any data: $\beta_1\sim N(0.01,0.002^2)$ . Describe their prior understanding in the context of the problem.
+
+    ANS: The researchers believe that the slope coefficient on the body_mass_g predictor variable can plausibly be anywhere between .007 and .013 with a fairly high confidence that this value is non-negative.
+
+2.  Use **stan_glm** in the code chunk below to simulate the Normal regression posterior model of flipper length by body mass using the researchers’ prior for $\beta_1$ and and weakly informative priors for $\beta_{0c}$ and $\sigma$. Do so with 4 chains run for 10000 iterations each.
+
+```{r}
+model <- stan_glm(flipper_length_mm ~ body_mass_g, data = penguins_bayes, prior = normal(.01, .002), chains = 4, iter = 10000, seed = 0)
+```
+
+3.  In the chunk below, plot the posterior model of the $\beta_1$ body_mass_g coefficient. Use this to describe the researchers’ posterior understanding of the relationship between flippers and mass and how, if at all, this evolved from their prior understanding.
+
+    ANS: The researchers updated their prior understanding of the body_mass_g slope coefficient with a posterior mean of .015 that's slightly higher than that of their prior's.
+
+    There's approximately a posterior probability of 1 that the body_mass_g coefficient is positive which means the researchers are highly confident that there's a postive relationship between body_mass in grams and flipper_length in millimeters.
+
+```{r}
+mcmc_dens_overlay(model, pars = 'body_mass_g')
+model_df <- as.data.frame(model)
+model_df |> 
+  mutate(less0 = body_mass_g < 0) |> 
+  tabyl(less0)
+```
+
+4.  Calculate and interpret a 90% posterior credible interval for a new penguin with a body mass of 4000g.
+
+    ANS: There's a 90% posterior probability that a new penguin with a body mass of 4000 g has a flipper_length between 186.5 and 209.3 mm.
+
+```{r}
+pred <- posterior_predict(model, newdata = data.frame(body_mass_g = 4000))
+posterior_interval(pred, prob = .9)
+```

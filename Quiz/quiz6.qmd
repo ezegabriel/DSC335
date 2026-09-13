@@ -1,0 +1,80 @@
+---
+title: "DSC 335 Quiz 6"
+format: pdf
+editor: visual
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(rstan)
+library(bayesplot)
+library(bayesrules)
+```
+
+Name:
+
+For this quiz we will consider a Normal-Normal Bayesian model with $Y\sim N(\mu,5^2)$ and $\mu\sim N(0,1^2)$. We observe 5 independent data observations: $Y_1=3, Y_2=7, Y_3=-4, Y_4=2, Y_5=-1$. The code chunk below gives the summary and plot of the true posterior distribution (helpful for checking your work).
+
+```{r, eval=FALSE, echo=TRUE}
+plot_normal_normal(0,1,5,mean(c(3,7,-4,2,-1)),5)
+summarize_normal_normal(0,1,5,mean(c(3,7,-4,2,-1)),5)
+```
+
+1.  Using the code chunk below, approximate the posterior distribution using grid approximation. Fill in any missing code/values (indicated by *?*)
+
+```{r, eval=FALSE, echo=TRUE}
+# Step 1: Define a grid of mu values
+grid_data   <- data.frame(mu_grid = seq(from = -10, to = 10, length=201))
+
+# Step 2: Evaluate the prior & likelihood at each mu
+grid_data <- grid_data |>  
+  mutate(prior = dnorm(mu_grid, 0, 1),
+         likelihood = dnorm(3, mu_grid, 5) * dnorm(7, mu_grid, 5) * dnorm(-4, mu_grid, 5) * dnorm(2, mu_grid, 5) * dnorm(-1, mu_grid, 5))
+
+# Step 3: Approximate the posterior
+grid_data <- grid_data |> 
+  mutate(unnormalized = prior * likelihood,
+         posterior = unnormalized / sum(unnormalized))
+
+# Set the seed
+set.seed(84735)
+
+# Step 4: sample from the discretized posterior
+post_sample <- sample_n(grid_data, size = 10000, 
+                        weight = posterior, replace = T)
+
+#plotting the simulated posterior
+ggplot(post_sample, aes(x = mu_grid)) + 
+  geom_histogram(aes(y =after_stat(density)), color = "white") +
+  stat_function(fun = dnorm, args = list(0.2333333, 0.9128709))
+```
+
+2.  Using the code chunk below, approximate the posterior using MCMC.
+
+```{r, eval=FALSE, echo=TRUE}
+# STEP 1: DEFINE the model
+nn_model <- "
+  data {
+    real Y[5];
+  }
+  parameters {
+    real mu;
+  }
+  model {
+    Y ~ normal(mu, 5);
+    mu ~ normal(0, 1);
+  }
+"
+# STEP 2: SIMULATE the posterior
+nn_sim <- stan(model_code = nn_model, 
+               data = list(Y = c(3, 7, -4, 2, -1)), 
+               chains = 4, iter = 5000*2, seed = 84735)
+
+# Density plot of the Markov chain values
+mcmc_dens(nn_sim, pars = "mu") + 
+  yaxis_text(TRUE) + 
+  ylab("density") +
+  stat_function(fun = dnorm, args = list(0.2333333, 0.9128709))
+
+
+```
